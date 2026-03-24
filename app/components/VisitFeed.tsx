@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { X, Plus, Check, Users, ChevronRight, ChevronDown, Zap } from 'lucide-react';
+import { X, Plus, Check, Users, ChevronRight, ChevronDown, Zap, Award, Star } from 'lucide-react';
 import type { Store, VisitPostWithDetails, CustomerSpend, ApplicantPreview } from '@/lib/types';
 import { MOCK_VISIT_POSTS } from '@/lib/mockVisitData';
 
@@ -78,8 +78,10 @@ function SpendBadges({ spend }: { spend: CustomerSpend | null }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {stars > 0 && (
-        <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#d4a017]/10 text-[#f0c040] border border-[#d4a017]/25">
-          {'★'.repeat(stars)}
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#d4a017]/15 text-[#f0c040] border border-[#d4a017]/30 shadow-[0_0_8px_rgba(212,160,23,0.15)]">
+          {Array.from({ length: stars }).map((_, i) => (
+            <Award key={i} size={13} className="text-[#f0c040] drop-shadow-[0_0_3px_rgba(240,192,64,0.5)]" />
+          ))}
         </span>
       )}
       {spend.has_tip_badge && (
@@ -191,21 +193,21 @@ function VisitCard({ post, applied, onApply }: VisitCardProps) {
         <div className="h-px bg-white/5" />
 
         {/* Row 3: customer info */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-col gap-2.5 p-3.5 -mx-0.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+          <div className="flex items-center gap-3">
             {/* Avatar initial */}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1a2a4a] to-[#0f1e38] border border-white/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-bold text-[#d4a017]">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#1a2a4a] to-[#0f1e38] border-2 border-[#d4a017]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(212,160,23,0.1)]">
+              <span className="text-sm font-bold text-[#d4a017]">
                 {post.customer.nickname.slice(0, 1)}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-sm font-semibold text-white truncate">
+                <span className="text-[15px] font-bold text-white truncate">
                   {post.customer.nickname}
                 </span>
                 {vip && (
-                  <span className="px-1.5 py-px rounded text-[10px] font-bold bg-[#d4a017]/15 text-[#f0c040] border border-[#d4a017]/25 flex-shrink-0">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d4a017]/20 text-[#f0c040] border border-[#d4a017]/30 shadow-[0_0_6px_rgba(212,160,23,0.2)] flex-shrink-0">
                     VIP
                   </span>
                 )}

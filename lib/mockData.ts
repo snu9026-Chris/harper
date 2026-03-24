@@ -12,9 +12,10 @@ const PHOTO_BASES = [
   'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=500&fit=crop&crop=face',
 ];
 
-const NAMES_DOPAMINE = ['수아', '지원', '하은', '예린', '나연'];
-const NAMES_ELITE = ['서연', '민지', '채원', '유나', '아름'];
-const NAMES_PERFECT = ['지유', '소율', '다인', '혜원', '보미'];
+// 10명 큐레이션: 도파민 4 + 엘리트 3 + 퍼펙트 3
+const NAMES_DOPAMINE = ['수아', '지원', '하은', '예린'];
+const NAMES_ELITE = ['서연', '민지', '채원'];
+const NAMES_PERFECT = ['지유', '소율', '다인'];
 
 function makeGirl(
   id: string,
