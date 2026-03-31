@@ -36,6 +36,8 @@ export interface CustomerProfile {
   nickname: string;
   store_preference: Store | null;
   created_at: string;
+  avatar_url?: string;
+  traits?: string[];
 }
 
 export interface CustomerSpend {

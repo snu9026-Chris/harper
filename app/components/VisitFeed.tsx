@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { X, Plus, Check, Users, ChevronRight, ChevronDown, Zap, Award, Star } from 'lucide-react';
-import type { Store, VisitPostWithDetails, CustomerSpend, ApplicantPreview } from '@/lib/types';
-import { MOCK_VISIT_POSTS } from '@/lib/mockVisitData';
+import { X, Plus, Check, Users, ChevronRight, ChevronDown, Zap, Star, LogIn } from 'lucide-react';
+import type { Store, VisitPostWithDetails, ApplicantPreview } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/AuthContext';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -59,44 +60,6 @@ function formatTime(timeStr: string) {
   return `${period} ${hour}:${m.toString().padStart(2, '0')}`;
 }
 
-function starCount(monthly: number) {
-  if (monthly >= 2000) return 3;
-  if (monthly >= 1000) return 2;
-  if (monthly >= 500) return 1;
-  return 0;
-}
-
-function isVip(spend: CustomerSpend | null) {
-  return !!spend && spend.monthly_spent >= 500;
-}
-
-// ─── SpendBadges ─────────────────────────────────────────────────────────────
-
-function SpendBadges({ spend }: { spend: CustomerSpend | null }) {
-  if (!spend) return null;
-  const stars = starCount(spend.monthly_spent);
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {stars > 0 && (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#d4a017]/15 text-[#f0c040] border border-[#d4a017]/30 shadow-[0_0_8px_rgba(212,160,23,0.15)]">
-          {Array.from({ length: stars }).map((_, i) => (
-            <Award key={i} size={13} className="text-[#f0c040] drop-shadow-[0_0_3px_rgba(240,192,64,0.5)]" />
-          ))}
-        </span>
-      )}
-      {spend.has_tip_badge && (
-        <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          팁 잘 뿌림
-        </span>
-      )}
-      {spend.is_regular && (
-        <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
-          단골
-        </span>
-      )}
-    </div>
-  );
-}
 
 // ─── ApplicantStack ───────────────────────────────────────────────────────────
 
@@ -149,7 +112,7 @@ function VisitCard({ post, applied, onApply }: VisitCardProps) {
   const dday = getDDay(post.visit_date);
   const { month, day, weekday } = formatDate(post.visit_date);
   const timeStr = formatTime(post.visit_time);
-  const vip = isVip(post.spend);
+  // spend/vip 시스템 제거됨 — 마담 뱃지 시스템으로 전환
 
   return (
     <motion.div
@@ -195,28 +158,35 @@ function VisitCard({ post, applied, onApply }: VisitCardProps) {
         {/* Row 3: customer info */}
         <div className="flex flex-col gap-2.5 p-3.5 -mx-0.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
           <div className="flex items-center gap-3">
-            {/* Avatar initial */}
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#1a2a4a] to-[#0f1e38] border-2 border-[#d4a017]/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(212,160,23,0.1)]">
-              <span className="text-sm font-bold text-[#d4a017]">
-                {post.customer.nickname.slice(0, 1)}
-              </span>
+            {/* Avatar */}
+            <div className="w-11 h-11 rounded-full border-2 border-[#d4a017]/20 flex-shrink-0 shadow-[0_0_12px_rgba(212,160,23,0.1)] overflow-hidden bg-gradient-to-br from-[#1a2a4a] to-[#0f1e38] flex items-center justify-center">
+              {post.customer.avatar_url ? (
+                <Image src={post.customer.avatar_url} alt={post.customer.nickname} width={44} height={44} className="object-cover w-full h-full" unoptimized />
+              ) : (
+                <span className="text-sm font-bold text-[#d4a017]">
+                  {post.customer.nickname.slice(0, 1)}
+                </span>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[15px] font-bold text-white truncate">
                   {post.customer.nickname}
                 </span>
-                {vip && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d4a017]/20 text-[#f0c040] border border-[#d4a017]/30 shadow-[0_0_6px_rgba(212,160,23,0.2)] flex-shrink-0">
-                    VIP
-                  </span>
-                )}
               </div>
             </div>
           </div>
 
-          {/* Spend badges */}
-          <SpendBadges spend={post.spend} />
+          {/* 자체 특징 traits */}
+          {post.customer.traits && post.customer.traits.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {post.customer.traits.map(t => (
+                <span key={t} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.05] text-[#e8e0d0]/50 border border-white/[0.08]">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Divider */}
@@ -452,15 +422,14 @@ function ChoiceModal({ post, onClose, onSubmit }: ChoiceModalProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-sm font-semibold text-white">{post.customer.nickname}</span>
-                {isVip(post.spend) && (
-                  <span className="px-1.5 py-px rounded text-[10px] font-bold bg-[#d4a017]/15 text-[#f0c040] border border-[#d4a017]/25">
-                    VIP
-                  </span>
-                )}
               </div>
-              <div className="mt-1">
-                <SpendBadges spend={post.spend} />
-              </div>
+              {post.customer.traits && post.customer.traits.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {post.customer.traits.slice(0, 3).map(t => (
+                    <span key={t} className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-[#a0916e] border border-white/8">{t}</span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -557,41 +526,103 @@ function ChoiceModal({ post, onClose, onSubmit }: ChoiceModalProps) {
 // ─── VisitFeed (main) ─────────────────────────────────────────────────────────
 
 export default function VisitFeed() {
-  const [posts, setPosts] = useState<VisitPostWithDetails[]>(
-    [...MOCK_VISIT_POSTS].sort(
-      (a, b) => new Date(a.visit_date + 'T' + a.visit_time).getTime() - new Date(b.visit_date + 'T' + b.visit_time).getTime()
-    )
-  );
+  const { user, profile } = useAuth();
+  const [posts, setPosts] = useState<VisitPostWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('전체');
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [showPostForm, setShowPostForm] = useState(false);
   const [choiceTarget, setChoiceTarget] = useState<VisitPostWithDetails | null>(null);
-  const [liveCount, setLiveCount] = useState(0);
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
 
-  // Simulate a live "new applicant" ping every ~8s for realism
-  useEffect(() => {
-    const id = setInterval(() => {
-      setLiveCount(n => n + 1);
-    }, 8000);
-    return () => clearInterval(id);
-  }, []);
+  // ── 실 데이터 fetch ──────────────────────────────────────────────────────────
+  const fetchPosts = async () => {
+    setLoading(true);
+    const { data: rawPosts } = await supabase
+      .from('visit_posts')
+      .select('*')
+      .eq('status', 'open')
+      .order('visit_date', { ascending: true })
+      .order('visit_time', { ascending: true });
+
+    if (!rawPosts || rawPosts.length === 0) { setPosts([]); setLoading(false); return; }
+
+    // 고객 프로필 batch fetch
+    const customerIds = Array.from(new Set(rawPosts.map((p: any) => p.customer_id as string)));
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id,nickname,avatar_url,traits')
+      .in('id', customerIds);
+    const profileMap: Record<string, any> = Object.fromEntries((profilesData || []).map((p: any) => [p.id, p]));
+
+    // 신청자 batch fetch
+    const postIds = rawPosts.map((p: any) => p.id);
+    const { data: appData } = await supabase
+      .from('choice_applications')
+      .select('visit_post_id,applicant_id,profiles(nickname,avatar_url)')
+      .in('visit_post_id', postIds);
+
+    // 합치기
+    const details: VisitPostWithDetails[] = rawPosts.map((p: any) => {
+      const cust = profileMap[p.customer_id];
+      const applicants: ApplicantPreview[] = ((appData || []) as any[])
+        .filter(a => a.visit_post_id === p.id)
+        .map(a => ({
+          girl_id: a.applicant_id,
+          photo_url: a.profiles?.avatar_url || '',
+          name: a.profiles?.nickname || '?',
+        }));
+      return {
+        id: p.id,
+        customer_id: p.customer_id,
+        store: p.store,
+        visit_date: p.visit_date,
+        visit_time: p.visit_time,
+        status: p.status,
+        created_at: p.created_at,
+        customer: {
+          id: p.customer_id,
+          nickname: cust?.nickname || '?',
+          store_preference: null,
+          created_at: '',
+          avatar_url: cust?.avatar_url || null,
+          traits: cust?.traits || [],
+        },
+        spend: null,
+        applicants,
+      };
+    });
+
+    setPosts(details);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchPosts(); }, []);
 
   const filteredPosts = posts.filter(p => {
-    if (activeFilter === 'VIP만') return isVip(p.spend);
+    if (activeFilter === 'VIP만') return false; // spend 데이터 없으므로
     if (activeFilter === '전체') return true;
     return p.store === activeFilter;
   });
 
-  function handlePostSubmit(data: { date: string; time: string; store: Store }) {
+  async function handlePostSubmit(data: { date: string; time: string; store: Store }) {
+    if (!user || !profile) return;
+    const { data: inserted, error } = await supabase
+      .from('visit_posts')
+      .insert({ customer_id: user.id, store: data.store, visit_date: data.date, visit_time: data.time, status: 'open' })
+      .select()
+      .single();
+    if (error || !inserted) return;
+
     const newPost: VisitPostWithDetails = {
-      id: `vp-new-${Date.now()}`,
-      customer_id: 'me',
+      id: inserted.id,
+      customer_id: user.id,
       store: data.store,
       visit_date: data.date,
       visit_time: data.time,
       status: 'open',
-      created_at: new Date().toISOString(),
-      customer: { id: 'me', nickname: '나', store_preference: data.store, created_at: new Date().toISOString() },
+      created_at: inserted.created_at,
+      customer: { id: user.id, nickname: profile.nickname, store_preference: data.store, created_at: '', avatar_url: profile.avatar_url, traits: profile.traits || [] },
       spend: null,
       applicants: [],
     };
@@ -602,13 +633,18 @@ export default function VisitFeed() {
     );
   }
 
-  function handleChoiceSubmit(postId: string) {
+  async function handleChoiceSubmit(postId: string, message: string) {
+    if (!user || !profile) return;
+    const { error } = await supabase
+      .from('choice_applications')
+      .insert({ visit_post_id: postId, applicant_id: user.id, message: message || null });
+    if (error) return;
+
     setAppliedIds(prev => { const s = new Set(prev); s.add(postId); return s; });
-    // Optimistically add applicant count
     setPosts(prev =>
       prev.map(p =>
         p.id === postId
-          ? { ...p, applicants: [...p.applicants, { girl_id: 'me', photo_url: '', name: '나' }] }
+          ? { ...p, applicants: [...p.applicants, { girl_id: user.id, photo_url: profile.avatar_url || '', name: profile.nickname }] }
           : p
       )
     );
@@ -628,14 +664,24 @@ export default function VisitFeed() {
           <p className="text-[#e8e0d0]/40 text-sm mt-1">손님이 직접 등록한 방문 일정 · 아가씨가 먼저 신청하세요</p>
         </div>
 
-        {/* Post CTA */}
-        <button
-          onClick={() => setShowPostForm(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#d4a017]/10 hover:bg-[#d4a017]/20 text-[#d4a017] border border-[#d4a017]/25 hover:border-[#d4a017]/50 text-sm font-semibold transition-all duration-200 active:scale-95 self-start sm:self-auto"
-        >
-          <Plus size={15} />
-          방문 등록
-        </button>
+        {/* Post CTA - 남자/마담만 방문 등록 가능 */}
+        {user && (profile?.user_type === '남자' || profile?.user_type === '마담') ? (
+          <button
+            onClick={() => setShowPostForm(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#d4a017]/10 hover:bg-[#d4a017]/20 text-[#d4a017] border border-[#d4a017]/25 hover:border-[#d4a017]/50 text-sm font-semibold transition-all duration-200 active:scale-95 self-start sm:self-auto"
+          >
+            <Plus size={15} />
+            방문 등록
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowLoginAlert(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#e8e0d0]/40 border border-white/10 text-sm font-semibold transition-all duration-200 active:scale-95 self-start sm:self-auto"
+          >
+            <LogIn size={15} />
+            {!user ? '로그인 후 등록' : '방문 등록 (남자/마담 전용)'}
+          </button>
+        )}
       </div>
 
       {/* Filter tabs */}
@@ -660,7 +706,12 @@ export default function VisitFeed() {
 
       {/* Grid */}
       <AnimatePresence mode="popLayout">
-        {filteredPosts.length === 0 ? (
+        {loading ? (
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+            <div className="w-8 h-8 border-2 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-[#e8e0d0]/25 text-sm">불러오는 중...</p>
+          </motion.div>
+        ) : filteredPosts.length === 0 ? (
           <motion.div
             key="empty"
             initial={{ opacity: 0 }}
@@ -688,6 +739,39 @@ export default function VisitFeed() {
         )}
       </AnimatePresence>
 
+      {/* 로그인 안내 알럿 */}
+      <AnimatePresence>
+        {showLoginAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+            onClick={() => setShowLoginAlert(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#0a1628] border border-[#d4a017]/30 rounded-2xl p-6 max-w-xs w-full text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <LogIn size={36} className="mx-auto mb-3 text-[#d4a017]" />
+              <p className="text-[#e8e0d0] font-semibold mb-1">로그인이 필요합니다</p>
+              <p className="text-[#a0916e] text-sm mb-4">
+                {!user ? '남자/마담 계정으로 로그인 후\n방문 일정을 등록할 수 있습니다.' : '방문 등록은 남자/마담 계정만 가능합니다.'}
+              </p>
+              <button
+                onClick={() => setShowLoginAlert(false)}
+                className="px-6 py-2 bg-[#d4a017] hover:bg-[#f0c040] text-black font-semibold rounded-xl text-sm transition-colors"
+              >
+                확인
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Modals */}
       <AnimatePresence>
         {showPostForm && (
@@ -700,7 +784,7 @@ export default function VisitFeed() {
           <ChoiceModal
             post={choiceTarget}
             onClose={() => setChoiceTarget(null)}
-            onSubmit={msg => { handleChoiceSubmit(choiceTarget.id); }}
+            onSubmit={msg => { handleChoiceSubmit(choiceTarget.id, msg); }}
           />
         )}
       </AnimatePresence>

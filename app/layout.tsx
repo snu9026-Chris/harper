@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "../lib/AuthContext";
 
 export const metadata: Metadata = {
   title: "Harper | 프리미엄 예약",
@@ -22,7 +23,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[#050b1a] text-[#e8e0d0] antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
